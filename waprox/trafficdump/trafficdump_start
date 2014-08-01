@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# start udpserver 
+python ./udpserver.py 50 </dev/null >& ./server_log &

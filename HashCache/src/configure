@@ -1,0 +1,81 @@
+#!/bin/bash
+
+echo -e '\E[0;34m'"\033[1mHashCache-1.0 Configure\033[0m"
+echo "Checking for gcc"
+
+gcc -v 2>&1 &> /dev/null
+
+if [[ $? > 0 ]]; then
+	echo
+	echo "Sorry, gcc is not found on this machine"
+	exit
+fi
+
+echo "Checking the installed version of gcc is correct"
+
+gcc -v 2>&1 | grep 'gcc version 4' --color=never &> /dev/null
+
+if [[ $? > 0 ]]; then
+	echo
+	echo "gcc version seems to be old"
+	echo "we recommend 4 or above"
+	exit
+fi
+
+echo "Checking the block device where you want to setup the cache"
+if [[ $HASHCACHEDEV == "" ]]; then
+	echo
+	echo "Please set the \$HASHCACHEDEV variable to device which contains the file system to be used for HashCache emulation"
+	exit
+fi
+
+echo "Device is $HASHCACHEDEV"
+
+/sbin/dumpe2fs $HASHCACHEDEV 2>&1| grep -i 'find valid filesystem superblock' &> /dev/null
+
+if [[ $? = 0 ]]; then
+	echo
+ 	echo "$HASHCACHEDEV is not a valid block device"
+	echo "Please set it to a proper block device"
+	exit
+fi
+
+x=$(/sbin/dumpe2fs $HASHCACHEDEV | grep 'Block size')
+echo "Block size of ${x:26} being used for building the emulated HashCache filesystem"
+
+echo "Checking the partition information for HashCache cache"
+if [[ $HASHCACHE == "" ]]; then
+	echo
+	echo "Please set the \$HASHCACHE variable to determine the path to the HashCache cache"
+	exit
+fi
+
+echo "Path for the cache is $HASHCACHE"
+
+x=$(cat /proc/mounts  | grep $HASHCACHEDEV)
+
+if [[ $x == "" ]]; then
+	echo
+	echo "Device is not mounted"
+	echo "Give full path to the device"
+	exit
+fi
+
+i=0
+path=0
+for y in $x; do
+	i=$(($i+1))
+	if [[ $i = 2 ]]; then
+		path=$y
+	fi
+done
+
+y=$(echo `expr match "$HASHCACHE" $path`)
+
+if [[ $y != $(echo `expr length $path`) ]]; then
+	echo
+	echo "Path $HASHCACHE is not from the device mentioned"	
+	echo "Give full path to the HashCache cache"
+	exit
+fi
+

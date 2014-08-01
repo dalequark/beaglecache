@@ -1,0 +1,17 @@
+#!/usr/bin/python
+
+import os
+import time
+
+cmd = "MQ_NODES=../nodelist.txt"
+cmd += " MQ_MAXLOAD=20"
+cmd += " MQ_TIMEOUT=120"
+cmd += " MQ_SLICE=princeton_wa"
+cmd += " ../multiquery './node_livetst'"
+
+while True:
+	print cmd
+	os.system(cmd)
+
+	print "sleep 1 hour..."
+	time.sleep(60*60)

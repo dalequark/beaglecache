@@ -1,0 +1,24 @@
+#!/usr/bin/python
+import os
+
+# trafficdump watchdog: it takes care of udpserver.py
+print "watchdog is being created"
+command = "./trafficdump_watchdog < /dev/null >& /dev/null &"
+print command
+os.system(command)
+
+# logpush client
+print "lpclient is being created"
+command = "./lpclient </dev/null >& ./lpclient_res &"
+print command
+os.system(command)
+
+# log compresssor: run only if it's not running
+command = "ps aux | grep compressor | grep -v grep | wc -l"
+if int(os.popen(command).readline()) == 0:
+	print "starting compressor"
+	command = "python compressor.py </dev/null >& ./compressor_res &"
+	print command
+	os.system(command)
+else:
+	print "compressor is already running"

@@ -1,0 +1,25 @@
+README for CoDeeN traffic dump
+
+[princeton_codeen]
+- compile req_redirect module with _WAPROX_FORWARD enabled
+  overwrite the module
+
+- copy waprox_forward.conf file in /home/princeton_codeen/var/ directory
+  it contains just one line "localhost:9989"
+  which indicates the destination UDP server port
+ 
+- restart the proxy
+  ./prox_stop; ./prox_start
+
+[princeton_wa]
+- make: generate trafficdump.tar.gz file
+  udpserver.py, urlnorm.py: main udp server which generate full log files
+  compressor.py: compress log files in 'logs' directory
+  		and move them to 'staging' directory
+  lpclient, lpclient.conf: log push client.
+  		upload logs in staging directory to log push server
+  trafficdump_start: start script for running udpserver.py
+  trafficdump_watchdog: check udpserver liveness every 5 min.
+  node_livetst: run this script with multiquery every hour from remote
+
+- copy all files to princeton_wa slice and run './trafficdump_start; ./node_livetst'

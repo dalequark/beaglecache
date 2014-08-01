@@ -1,0 +1,28 @@
+PPTP server modification to forward client traffic into waprox server
+(modifications to the original pptpd source can be identified by 
+the string BEGIN_WAPROX and END_WAPROX)
+
+0. version: tested with pptpd-1.3.0 (should work with later versions)
+
+1. copy (or overwrite) the files below into pptpd source directory
+	pptpwaprox.h
+	pptpwaprox.c
+	pptpgre.c
+	pptpctrl.c
+	hashtable.c
+	hashtable.h
+	hashtable_private.h
+
+2. modify Makefile to reflect newly added files
+
+3. build and run pptpd
+
+4. allow TCP port 1723 (pptpd), 9981, 9982, 9983 (waprox),
+   UDP port 9984 (waprox) and GRE packets in iptables
+ex)
+iptables -I RH-Firewall-1-INPUT -p gre -j ACCEPT
+iptables -I RH-Firewall-1-INPUT -p tcp --destination-port 1723 -j ACCEPT
+iptables -I RH-Firewall-1-INPUT -p tcp --destination-port 9981 -j ACCEPT
+iptables -I RH-Firewall-1-INPUT -p tcp --destination-port 9982 -j ACCEPT
+iptables -I RH-Firewall-1-INPUT -p tcp --destination-port 9983 -j ACCEPT
+iptables -I RH-Firewall-1-INPUT -p udp --destination-port 9984 -j ACCEPT

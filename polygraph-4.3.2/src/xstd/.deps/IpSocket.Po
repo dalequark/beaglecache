@@ -1,0 +1,8 @@
+IpSocket.o: IpSocket.cc ../../src/xstd/xstd.h ../../config.h \
+  ../../post-config.h
+
+../../src/xstd/xstd.h:
+
+../../config.h:
+
+../../post-config.h:

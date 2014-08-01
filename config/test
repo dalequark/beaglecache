@@ -1,1 +1,16 @@
-somestusffsff
+[global]
+ioengine=posixaio
+direct=1
+group_reporting
+
+filename=tf1
+numjobs=4
+rw=randread
+
+runtime=10
+time_based=1
+bs=512
+
+[randread-512]
+stonewall
+size=512

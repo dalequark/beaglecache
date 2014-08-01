@@ -1,0 +1,7 @@
+- build instruction
+./configure --enable-sctp-over-udp --disable-ipv6
+make
+make install
+
+- increase NUM_FDS in sctp.h to 1024 or so.
+- TODO: increase cwnd/cwnd2 in flowcontrol.c
