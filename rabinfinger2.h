@@ -17,6 +17,9 @@
 
 #include <sys/types.h>
 
+typedef int int32;
+typedef unsigned long u_int64;
+typedef unsigned char u_int8;
 
 typedef struct rabin_poly
 {

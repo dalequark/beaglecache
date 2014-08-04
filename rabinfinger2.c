@@ -22,9 +22,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include "czipdef.h"
+//#include "czipdef.h"
 #include "rabinfinger2.h"
-#include "debug.h"
+//#include "debug.h"
 
 
 /*--------------------------------------------------------------------------*/
@@ -34,6 +34,7 @@
 #define MAX_RABIN_CHUNK_SIZE (128*1024)
 
 #define IRREDUCIBLE_POLY (0x946d1d8dcfee41e5LL)
+#define NELEM(a) (sizeof(a)/sizeof(a[0]))
 /*--------------------------------------------------------------------------*/
 static int chunk_sizes[] = {32, 64, 128, 256, 512, 1024, 2*1024, 4*1024, 
 	8*1024, 16*1024, 32*1024, 64*1024, 128*1024};
@@ -41,6 +42,10 @@ static u_int masks[] = {32 - 1 , 64 - 1, 128 - 1, 256 - 1, 512 - 1, 1024 - 1,
 	2*1024 - 1, 4*1024 - 1, 8*1024 - 1, 16*1024 - 1, 32*1024 - 1,
 	64*1024 - 1, 128*1024 - 1};
 /*--------------------------------------------------------------------------*/
+
+
+
+
 static int 
 GetDegree(u_int64 poly)
 {
@@ -54,8 +59,8 @@ GetDegree(u_int64 poly)
 u_int64
 GetFingerprint(u_int64 h, u_int64 l, u_int64 poly)
 {
-  int k = GetDegree(poly);
   int i;
+  int k = GetDegree(poly);
 
   poly <<= (63 - k);
   if (h) {
@@ -81,7 +86,11 @@ MultiplyPoly(u_int64* h, u_int64* l, u_int64 x, u_int64 y)
   int i;
 
   if (h == NULL || l == NULL)
-    EXIT_TRACE("wrong multiply argument\n");
+  {
+    fprintf(stderr, "wrong multiply argument\n");
+    return;
+  }
+
 
   if (x & 1)
     il = y;
@@ -154,7 +163,7 @@ GetNormalizedSize(int b_size)
       return chunk_sizes[i];
   }
 
-  EXIT_TRACE("block size %d is out of range(%d to %d)\n",  b_size,
+  fprintf(stderr, "block size %d is out of range(%d to %d)\n",  b_size,
   		chunk_sizes[0], chunk_sizes[(int)NELEM(chunk_sizes) - 1]);
   return 0;
 }
@@ -168,7 +177,7 @@ GetMRCIndex(int b_size)
       return i;
   }
 
-  EXIT_TRACE("block size %d is out of range(%d to %d)\n",  b_size,
+  fprintf(stderr, "block size %d is out of range(%d to %d)\n",  b_size,
   		chunk_sizes[0], chunk_sizes[(int)NELEM(chunk_sizes) - 1]);
   return -1;
 }
@@ -262,7 +271,7 @@ int32 GetRabinChunkSizeEx(RabinCtx* rctx, const u_char* src, int32 srclen,
 		ZeroRegionBuf(&(rctx->rp));
 	}
 
-	srclen = MIN(srclen, rctx->max_size);
+	srclen = srclen < rctx->max_size ? srclen : rctx->max_size;
 	end = src + srclen;
 	*outNumBoundaries = 0;
 	
@@ -303,35 +312,92 @@ int main(int argc, char** argv)
   #define WAPROX_RABIN_WINDOW     (16)
   #define WAPROX_MRC_MIN          (0)
   #define WAPROX_MRC_MAX          (128*1024)
-  RabinCtx context;
+
+  RabinCtx* context =(RabinCtx*) malloc(sizeof(RabinCtx));
   int32 chunkSize;
   int g_MinChunkSize = 64; /* in bytes */
   int g_ChunkSize = 1024; /* in bytes */
-  const char* src = "Alabama Alaska Arizona Arkansas California\
-  Colorado Conneticut Deleware Florida Georgia Hawaii Idaho Illinois\
-  Indiana Iowa Kansas Kentucky Maine Minnisota Montana Nebraska Nevada\
-  Oklahoma Idaho";
+  FILE *fp;
+  char* src;
+  long lSize;
+  int i;
+  char* buffer;
+  if(argc < 2)
+  {
+    printf("Usage: %s inputfile\n", argv[0]);
+    exit(1);
+  }
+  if( !(fp = fopen(argv[1], "r")) )
+  {
+    printf("Can't open file %s\n", argv[1]);
+    exit(1);
+  }
+
+  fseek(fp, 0L, SEEK_END);
+  lSize = ftell(fp);
+  rewind(fp);
+
+  if(! (src = calloc(1, lSize + 1)) ){
+    fclose(fp);
+    printf("Memory allocation failed");
+    exit(1);
+  };
+
+  if(1 != fread(src, lSize, 1, fp))
+  {
+    fclose(fp);
+    free(src);
+    printf("Read failed");
+    exit(1);  
+  }
+  fclose(fp);
+
 
   static RabinBoundary* rabinBoundaries = NULL;
   unsigned int numBoundaries = 0;
 
+  rabinBoundaries = (RabinBoundary*) malloc(sizeof(RabinBoundary) * g_ChunkSize);
   if (rabinBoundaries == NULL) {
-    rabinBoundaries = malloc(sizeof(RabinBoundary) * g_ChunkSize);
-    if (rabinBoundaries == NULL) {
-            NiceExit(-1, "RabinBoundary alloc failed\n");
-    }
-  }
-  static char init = FALSE;
-  u_int min_mask = 0;
-  u_int max_mask = 0;
-  if (init == FALSE) {
-          min_mask = GetMRCMask(g_MinChunkSize);
-          max_mask = GetMRCMask(g_ChunkSize);
+          fprintf(stderr, "RabinBoundary alloc failed\n");
+          return 1;
   }
 
-  InitRabinCtx(&context, 64, WAPROX_RABIN_WINDOW,
+  u_int min_mask = GetMRCMask(g_MinChunkSize);
+  u_int max_mask = GetMRCMask(g_ChunkSize);
+  
+
+  InitRabinCtx(context, g_MinChunkSize, WAPROX_RABIN_WINDOW,
                 WAPROX_MRC_MIN, WAPROX_MRC_MAX);
 
-  chunkSize = GetRabinChunkSizeEx(&context, src, strlen(src), min_mask, max_mask, TRUE, rabinBoundaries, &numBoundaries);
-  printf("Rabin Fingerprintd %d/%d bytes, finger: %llu, %d\n", chunkSize, strlen(src), rabinBoundaries[numBoundaries-1].finger);
+  chunkSize = GetRabinChunkSizeEx(context, (const u_char*) src, strlen(src), min_mask, max_mask, 1, rabinBoundaries, &numBoundaries);
+  printf("Rabin Fingerprinted %d/%d bytes, finger: %lu, %d\n", chunkSize, (int) strlen(src), rabinBoundaries[numBoundaries-1].finger, numBoundaries);
+
+  for(i=0; i<numBoundaries; i++)
+  {
+    if(i == 0)
+    {
+      buffer = malloc(rabinBoundaries[0].offset + 2);
+      for(int j = 0; j <= rabinBoundaries[0].offset; j++)
+      {
+        buffer[j] = src[j];
+      }
+      buffer[rabinBoundaries[0].offset + 1] = '\0';
+    }
+     else    
+    {
+      if(! (buffer = malloc(rabinBoundaries[i].offset - rabinBoundaries[i-1].offset+ 2)))  exit(1);
+      for(int j = 0; j <= (rabinBoundaries[i].offset - rabinBoundaries[i-1].offset); j++)
+      {
+        buffer[j] = src[rabinBoundaries[i-1].offset + 1 + j];
+      }
+      buffer[rabinBoundaries[i].offset - rabinBoundaries[i-1].offset + 1] = '\0';
+    }
+    printf("%d'th Fingerprint finger: %lu Fingerprint offset: %d\n Content: %s\n\n", i, rabinBoundaries[i].finger, rabinBoundaries[i].offset, buffer);
+    free(buffer);
+  }
+  
+  free(src);
+  free(rabinBoundaries);
+
+  return 0;
 }
